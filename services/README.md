@@ -35,7 +35,9 @@ Grafanaのデータソース・ダッシュボード登録、エージェント�
 Langfuseプラグインは公式マーケットプレイスを登録し、生成したAPIキーをClaude Codeの設定機構に渡す。
 秘密キーをコマンドの出力やGitに保存しない。Claude Codeの既存設定・Herdrのフックは保持する。
 
-新しいClaude Code / Codexセッションから収集が始まる。過去の履歴は取り込まない。
+Dockerの各サービスが起動していれば、計装設定を読み込んだClaude Code / Codexクライアントから自動で送信される。
+設定を適用した後はクライアントを完全に終了して起動し直す。新しいチャットを開くだけでは、
+起動済みクライアントが古い設定を使い続ける場合がある。過去の履歴は取り込まない。
 Herdr内で通常どおり `claude` / `codex` を実行できる。
 
 | サービス | URL | 用途 |
@@ -79,7 +81,10 @@ Claudeのプラグインはプロンプト・応答・ツールの入出力を�
 CodexはネイティブOTelイベント・スパンを記録し、`log_user_prompt = false` としている。
 CodexのトレースはClaudeのtranscriptベースの会話再生とは粒度が異なり、
 ネイティブ属性次第ではLangfuseのモデル別コストやトークン集計に現れない。
-Grafanaの「Agent Execution Logs」またはExploreの「Agent Logs」でイベントを調べる。
+Codexの実行イベントはGrafanaの「Agent Execution Logs」またはExploreの「Agent Logs」で調べる。
+Exploreでは `{service_name="codex_cli_rs"}` でCodexのログに絞れる。
+LangfuseのCodexトレースはファイル操作など低レベルのspanが中心になり、会話単位の再生には向かない。
+Claude Codeの会話・ツール履歴はLangfuseのTracesで調べる。
 
 Claudeのコスト表示は定価による推定で、サブスクリプションの実際の請求額ではない。
 macOS専用のホスト監視・Nix設定は移植していない。
