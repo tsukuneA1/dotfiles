@@ -1,0 +1,13 @@
+{
+  "model": "opus[1m]",
+  "language": "japanese",
+  "effortLevel": "high",
+  "tui": "fullscreen",
+  "switchModelsOnFlag": true,
+  "enabledPlugins": {
+    "skill-creator@claude-plugins-official": true
+  },
+  "permissions": {
+    "defaultMode": "auto"
+  }
+}

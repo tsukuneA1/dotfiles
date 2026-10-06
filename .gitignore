@@ -1,0 +1,11 @@
+# Local state and credentials must stay outside this repository.
+*.local.*
+.env
+.env.*
+auth.json
+credentials.json
+.claude.json
+settings.local.json
+__pycache__/
+*.pyc
+backups/
