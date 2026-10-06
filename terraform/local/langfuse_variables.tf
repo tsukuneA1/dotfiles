@@ -24,7 +24,7 @@ variable "init_project_name" {
 
 variable "init_user_email" {
   type    = string
-  default = "admin@langfuse.local"
+  default = "admin@example.com"
 }
 
 variable "init_user_name" {

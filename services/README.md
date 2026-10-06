@@ -46,6 +46,8 @@ Herdr内で通常どおり `claude` / `codex` を実行できる。
 | Collector | http://localhost:13133 | Collectorのヘルスチェック |
 
 ログイン情報は自分のターミナルで次のコマンドを実行して確認する。
+初期ユーザーの `admin@example.com` はローカルログイン用の例示アドレスで、
+実際にメールを受信できる必要はない。Langfuseのフォームが `.local` を拒否するためこの形式にしている。
 
 ```sh
 python3 scripts/observability.py credentials
