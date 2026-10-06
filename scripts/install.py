@@ -13,6 +13,8 @@ import subprocess
 import tomllib
 
 REPO = Path(__file__).resolve().parent.parent
+BASH_BEGIN = "# dotfiles: begin exec-fish"
+BASH_END = "# dotfiles: end exec-fish"
 
 
 def merge_json(current, shared):
@@ -68,37 +70,59 @@ def merge_codex(current, shared):
     return result
 
 
+def merge_bashrc(current, snippet):
+    """Maintain one fish launcher block while retaining local bash setup."""
+    if current.count(BASH_BEGIN) != current.count(BASH_END) or current.count(BASH_BEGIN) > 1:
+        raise ValueError("Cannot safely merge this bashrc; no files changed")
+    if BASH_BEGIN in current:
+        pattern = re.compile(r"(?m)^" + re.escape(BASH_BEGIN) + r"\n.*?^" + re.escape(BASH_END) + r"\n?", re.S)
+        current, count = pattern.subn("", current)
+        if count != 1:
+            raise ValueError("Cannot safely merge this bashrc; no files changed")
+    prefix = current.rstrip("\n")
+    return (prefix + "\n\n" if prefix else "") + snippet.rstrip("\n") + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", type=Path, default=Path.home(), help="Target home (for preview/testing)")
     parser.add_argument("--skip-integrations", action="store_true", help="Apply preferences only")
+    parser.add_argument("--shell-only", action="store_true", help="Apply only bash and fish configuration")
     parser.add_argument("--observability", action="store_true", help="Enable local telemetry exporters")
     args = parser.parse_args()
     home = args.home.expanduser().resolve()
-    if not args.skip_integrations and home != Path.home().resolve():
+    if not (args.skip_integrations or args.shell_only) and home != Path.home().resolve():
         parser.error("Use --skip-integrations with an alternate --home")
-    if not args.skip_integrations and not shutil.which("herdr"):
+    if not (args.skip_integrations or args.shell_only) and not shutil.which("herdr"):
         parser.error("Install Herdr first: https://herdr.dev/docs/install/")
 
     claude = home / ".claude/settings.json"
     codex = home / ".codex/config.toml"
+    bashrc = home / ".bashrc"
     # Respect XDG_CONFIG_HOME for the real user; alternate homes are isolated.
     config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config"))) if home == Path.home().resolve() else home / ".config"
     herdr = config_home / "herdr/config.toml"
-    claude_current = json.loads(claude.read_text()) if claude.exists() else {}
-    codex_current = codex.read_text() if codex.exists() else ""
-    claude_shared = json.loads((REPO / "claude/settings.json").read_text())
-    codex_shared = tomllib.loads((REPO / "codex/config.toml").read_text())
-    if args.observability:
-        claude_shared = merge_json(claude_shared, json.loads((REPO / "observability/claude.settings.json").read_text()))
-        codex_shared.update(tomllib.loads((REPO / "observability/codex.config.toml").read_text()))
-    herdr_source = REPO / "herdr/config.toml"
-    tomllib.loads(herdr_source.read_text())
+    fish = config_home / "fish/config.fish"
+    bashrc_current = bashrc.read_text() if bashrc.exists() else ""
+    fish_source = REPO / "fish/config.fish"
     # Validate everything before touching the real configuration.
-    changes = {
-        claude: json.dumps(merge_json(claude_current, claude_shared), ensure_ascii=False, indent=2) + "\n",
-        codex: merge_codex(codex_current, codex_shared),
-    }
+    changes = {bashrc: merge_bashrc(bashrc_current, (REPO / "bash/exec-fish.bash").read_text())}
+    links = [(fish, fish_source)]
+    if not args.shell_only:
+        claude_current = json.loads(claude.read_text()) if claude.exists() else {}
+        codex_current = codex.read_text() if codex.exists() else ""
+        claude_shared = json.loads((REPO / "claude/settings.json").read_text())
+        codex_shared = tomllib.loads((REPO / "codex/config.toml").read_text())
+        if args.observability:
+            claude_shared = merge_json(claude_shared, json.loads((REPO / "observability/claude.settings.json").read_text()))
+            codex_shared.update(tomllib.loads((REPO / "observability/codex.config.toml").read_text()))
+        herdr_source = REPO / "herdr/config.toml"
+        tomllib.loads(herdr_source.read_text())
+        changes.update({
+            claude: json.dumps(merge_json(claude_current, claude_shared), ensure_ascii=False, indent=2) + "\n",
+            codex: merge_codex(codex_current, codex_shared),
+        })
+        links.append((herdr, herdr_source))
     backup = home / ".local/state/dotfiles/backups" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
 
     def save(path):
@@ -118,15 +142,17 @@ def main():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
         print(f"Applied: {path}")
-    if not (herdr.is_symlink() and herdr.resolve() == herdr_source):
-        save(herdr)
-        herdr.parent.mkdir(parents=True, exist_ok=True)
-        if herdr.exists() or herdr.is_symlink():
-            herdr.unlink()
-        herdr.symlink_to(herdr_source)
-        print(f"Linked: {herdr}")
+    for target, source in links:
+        if target.is_symlink() and target.resolve() == source:
+            continue
+        save(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        target.symlink_to(source)
+        print(f"Linked: {target}")
 
-    if not args.skip_integrations:
+    if not (args.skip_integrations or args.shell_only):
         # Let Herdr generate version-appropriate hooks and paths on each machine.
         for path in [claude, codex, home / ".codex/hooks.json",
                      home / ".claude/hooks/herdr-agent-state.sh",
