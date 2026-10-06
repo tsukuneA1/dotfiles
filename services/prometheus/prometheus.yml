@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+
+# Claude Code pushes its metrics here over OTLP (CLAUDE_CODE_ENABLE_TELEMETRY
+# in hosts/MacBookPro-minami/claude/settings.json) instead of being scraped:
+# each session is a short-lived process, and its built-in Prometheus
+# exporter would need a fixed port per session.
+otlp:
+  # service.name -> job, service.instance.id -> instance (defaults); also
+  # keep these on target_info.
+  keep_identifying_resource_attributes: true
+
+storage:
+  tsdb:
+    # OTLP clients batch and retry, so samples can arrive slightly late.
+    out_of_order_time_window: 30m
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+

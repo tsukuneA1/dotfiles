@@ -26,23 +26,33 @@ def merge_json(current, shared):
 
 
 def merge_codex(current, shared):
-    """Update scalar root preferences and [features], retaining other tables."""
+    """Update root preferences and selected tables, retaining machine state."""
     original = tomllib.loads(current)
-    expected = merge_json(original, shared)
+    expected = copy.deepcopy(original)
+    root = {k: v for k, v in shared.items() if not isinstance(v, dict)}
+    tables = {k: v for k, v in shared.items() if isinstance(v, dict)}
+    expected.update(root)
+    for table, values in tables.items():
+        expected.setdefault(table, {}).update(copy.deepcopy(values))
     lines = current.splitlines(keepends=True)
-    for table, values in [("", {k: v for k, v in shared.items() if k != "features"}),
-                          ("features", shared.get("features", {}))]:
+
+    def literal(value):
+        if isinstance(value, dict):
+            return "{ " + ", ".join(f"{json.dumps(k)} = {literal(v)}" for k, v in value.items()) + " }"
+        if isinstance(value, (str, bool, int)):
+            return json.dumps(value, ensure_ascii=False)
+        raise ValueError("Unsupported shared TOML value")
+
+    for table, values in [("", root), *tables.items()]:
         if not values:
             continue
-        if any(not isinstance(v, (str, bool, int)) for v in values.values()):
-            raise ValueError("Shared Codex preferences must be scalar values")
         headers = [i for i, line in enumerate(lines) if line.lstrip().startswith("[")]
         if table:
-            matches = [i for i in headers if re.fullmatch(r"\[features\]\s*(?:#.*)?", lines[i].strip())]
+            matches = [i for i in headers if re.fullmatch(r"\[" + re.escape(table) + r"\]\s*(?:#.*)?", lines[i].strip())]
             if matches:
                 start = matches[0] + 1
             else:
-                lines.append("\n[features]\n")
+                lines.append(f"\n[{table}]\n")
                 start = len(lines)
         else:
             start = 0
@@ -50,7 +60,7 @@ def merge_codex(current, shared):
         keys = "|".join(re.escape(k) for k in values)
         pattern = re.compile(r"^\s*(?:" + keys + r")\s*=")
         retained = [line for line in lines[start:end] if not pattern.match(line)]
-        rendered = [f"{key} = {json.dumps(value, ensure_ascii=False)}\n" for key, value in values.items()]
+        rendered = [f"{key} = {literal(value)}\n" for key, value in values.items()]
         lines[start:end] = rendered + retained
     result = "".join(lines)
     if tomllib.loads(result) != expected:
@@ -62,6 +72,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", type=Path, default=Path.home(), help="Target home (for preview/testing)")
     parser.add_argument("--skip-integrations", action="store_true", help="Apply preferences only")
+    parser.add_argument("--observability", action="store_true", help="Enable local telemetry exporters")
     args = parser.parse_args()
     home = args.home.expanduser().resolve()
     if not args.skip_integrations and home != Path.home().resolve():
@@ -78,6 +89,9 @@ def main():
     codex_current = codex.read_text() if codex.exists() else ""
     claude_shared = json.loads((REPO / "claude/settings.json").read_text())
     codex_shared = tomllib.loads((REPO / "codex/config.toml").read_text())
+    if args.observability:
+        claude_shared = merge_json(claude_shared, json.loads((REPO / "observability/claude.settings.json").read_text()))
+        codex_shared.update(tomllib.loads((REPO / "observability/codex.config.toml").read_text()))
     herdr_source = REPO / "herdr/config.toml"
     tomllib.loads(herdr_source.read_text())
     # Validate everything before touching the real configuration.

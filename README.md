@@ -2,6 +2,9 @@
 
 Claude Code、Codex、Herdrの共通設定。
 
+ローカルの実行履歴・使用量を記録する **Langfuse / Grafana / Prometheus** は
+[services/README.md](services/README.md) を参照。
+
 ## 適用
 
 Python 3.11以上と、ログイン済みのClaude Code・Codex、Herdrを用意する。

@@ -9,3 +9,12 @@ settings.local.json
 __pycache__/
 *.pyc
 backups/
+
+# Self-hosted observability credentials and Terraform state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+terraform.rc
+services/langfuse/clickhouse-users.d/
