@@ -9,7 +9,9 @@ flowchart LR
   Claude[Claude Code] -->|会話・応答・ツール履歴 / 公式plugin| Langfuse
   Claude -->|使用量・定価の推定コスト / OTLP| Prometheus
   Claude -->|実行イベント / OTLP| Collector
-  Codex -->|ログ・メトリクス・トレース / OTLP| Collector
+  Codex -->|ログ・メトリクス / OTLP| Collector
+  Codex -->|ターン・ツールのフック| CodexTrace[Codex trace hook]
+  CodexTrace -->|整理したトレース / OTLP| Collector
   Collector -->|ログ| Loki
   Collector -->|メトリクス| Prometheus
   Collector -->|トレース| Langfuse
@@ -39,6 +41,7 @@ Dockerの各サービスが起動していれば、計装設定を読み込ん�
 設定を適用した後はクライアントを完全に終了して起動し直す。新しいチャットを開くだけでは、
 起動済みクライアントが古い設定を使い続ける場合がある。過去の履歴は取り込まない。
 Herdr内で通常どおり `claude` / `codex` を実行できる。
+Codexのトレース設定だけを再適用する場合は `python3 scripts/install.py --codex-traces-only` を使う。
 
 | サービス | URL | 用途 |
 | --- | --- | --- |
@@ -78,12 +81,20 @@ Collectorはディスクキューで一時的な送信失敗を再試行し、Lo
 Langfuseの会話履歴は明示的に削除するまで保存する。
 
 Claudeのプラグインはプロンプト・応答・ツールの入出力を記録する。
-CodexはネイティブOTelイベント・スパンを記録し、`log_user_prompt = false` としている。
-CodexのトレースはClaudeのtranscriptベースの会話再生とは粒度が異なり、
-ネイティブ属性次第ではLangfuseのモデル別コストやトークン集計に現れない。
+CodexのログとメトリクスはネイティブOTelで送る。Langfuse向けトレースは
+`scripts/codex-trace-hook.py` がCodexのフックを使って組み立てる。
+1ターンを親の `agent`、各ツール実行を子の `tool` として記録する。
+プロンプトと最終回答は親に保存し、ツールの入出力本文は保存しない。
+ローカルの一時状態は `~/.local/state/dotfiles/codex-traces/` に置き、
+Collectorへの送信に失敗した完了トレースは次のターン開始時に再送する。
+Codexの `log_user_prompt = false` はネイティブログに対する設定であり、
+このフックの親spanに保存するプロンプトには適用されない。
+新しいフックはCodex起動後に `/hooks` で内容を確認して信頼する必要がある。
+Codexの内部モデル呼び出しやトークン使用量はフックから取得できないため、
+Langfuseのモデル別コスト集計には現れない。
 Codexの実行イベントはGrafanaの「Agent Execution Logs」またはExploreの「Agent Logs」で調べる。
 Exploreでは `{service_name="codex_cli_rs"}` でCodexのログに絞れる。
-LangfuseのCodexトレースはファイル操作など低レベルのspanが中心になり、会話単位の再生には向かない。
+以前のネイティブCodexトレースはLangfuseに残るが、新しいセッションからはフックのトレースだけを送る。
 Claude Codeの会話・ツール履歴はLangfuseのTracesで調べる。
 
 Claudeのコスト表示は定価による推定で、サブスクリプションの実際の請求額ではない。
@@ -103,5 +114,6 @@ Compose・Terraform・Langfuse/Claudeのダッシュボードを改変してい�
 公式資料：[Claude監視設定](https://code.claude.com/docs/en/monitoring-usage)、
 [Langfuse公式Claudeプラグイン](https://github.com/langfuse/claude-observability-plugin)、
 [Codex OTel設定](https://learn.chatgpt.com/docs/config-file/config-reference)、
+[Codex Hooks](https://learn.chatgpt.com/docs/hooks)、
 [Langfuse OTel](https://langfuse.com/integrations/native/opentelemetry)、
 [Loki OTel](https://grafana.com/docs/loki/latest/send-data/otel/)。

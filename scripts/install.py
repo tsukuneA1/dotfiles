@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import tomllib
@@ -15,6 +16,7 @@ import tomllib
 REPO = Path(__file__).resolve().parent.parent
 BASH_BEGIN = "# dotfiles: begin exec-fish"
 BASH_END = "# dotfiles: end exec-fish"
+CODEX_TRACE_EVENTS = ("UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "Interrupt")
 
 
 def merge_json(current, shared):
@@ -83,17 +85,46 @@ def merge_bashrc(current, snippet):
     return (prefix + "\n\n" if prefix else "") + snippet.rstrip("\n") + "\n"
 
 
+def merge_codex_trace_hooks(current, command):
+    """Add our telemetry hooks without changing other tools' hooks."""
+    result = copy.deepcopy(current)
+    hooks = result.setdefault("hooks", {})
+    if not isinstance(hooks, dict):
+        raise ValueError("Cannot safely merge Codex hooks")
+    for event in CODEX_TRACE_EVENTS:
+        groups = hooks.get(event, [])
+        if not isinstance(groups, list):
+            raise ValueError("Cannot safely merge Codex hooks")
+        retained = []
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
+                raise ValueError("Cannot safely merge Codex hooks")
+            if not all(isinstance(item, dict) for item in group["hooks"]):
+                raise ValueError("Cannot safely merge Codex hooks")
+            remaining = [item for item in group["hooks"]
+                         if "codex-trace-hook.py" not in str(item.get("command", ""))]
+            if remaining:
+                retained.append({**group, "hooks": remaining})
+        retained.append({"hooks": [{"type": "command", "command": command, "timeout": 3}]})
+        hooks[event] = retained
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", type=Path, default=Path.home(), help="Target home (for preview/testing)")
     parser.add_argument("--skip-integrations", action="store_true", help="Apply preferences only")
     parser.add_argument("--shell-only", action="store_true", help="Apply only bash and fish configuration")
+    parser.add_argument("--codex-traces-only", action="store_true", help="Apply only Codex trace telemetry")
     parser.add_argument("--observability", action="store_true", help="Enable local telemetry exporters")
     args = parser.parse_args()
+    if args.shell_only and (args.observability or args.codex_traces_only):
+        parser.error("--shell-only cannot be combined with observability options")
+    observability = args.observability or args.codex_traces_only
     home = args.home.expanduser().resolve()
-    if not (args.skip_integrations or args.shell_only) and home != Path.home().resolve():
+    if not (args.skip_integrations or args.shell_only or args.codex_traces_only) and home != Path.home().resolve():
         parser.error("Use --skip-integrations with an alternate --home")
-    if not (args.skip_integrations or args.shell_only) and not shutil.which("herdr"):
+    if not (args.skip_integrations or args.shell_only or args.codex_traces_only) and not shutil.which("herdr"):
         parser.error("Install Herdr first: https://herdr.dev/docs/install/")
 
     claude = home / ".claude/settings.json"
@@ -103,26 +134,33 @@ def main():
     config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config"))) if home == Path.home().resolve() else home / ".config"
     herdr = config_home / "herdr/config.toml"
     fish = config_home / "fish/config.fish"
-    bashrc_current = bashrc.read_text() if bashrc.exists() else ""
-    fish_source = REPO / "fish/config.fish"
     # Validate everything before touching the real configuration.
-    changes = {bashrc: merge_bashrc(bashrc_current, (REPO / "bash/exec-fish.bash").read_text())}
-    links = [(fish, fish_source)]
+    changes = {}
+    links = []
+    if not args.codex_traces_only:
+        bashrc_current = bashrc.read_text() if bashrc.exists() else ""
+        changes[bashrc] = merge_bashrc(bashrc_current, (REPO / "bash/exec-fish.bash").read_text())
+        links.append((fish, REPO / "fish/config.fish"))
     if not args.shell_only:
-        claude_current = json.loads(claude.read_text()) if claude.exists() else {}
         codex_current = codex.read_text() if codex.exists() else ""
+        codex_shared = {} if args.codex_traces_only else tomllib.loads((REPO / "codex/config.toml").read_text())
+        if observability:
+            codex_shared.update(tomllib.loads((REPO / "observability/codex.config.toml").read_text()))
+        changes[codex] = merge_codex(codex_current, codex_shared)
+    if not (args.shell_only or args.codex_traces_only):
+        claude_current = json.loads(claude.read_text()) if claude.exists() else {}
         claude_shared = json.loads((REPO / "claude/settings.json").read_text())
-        codex_shared = tomllib.loads((REPO / "codex/config.toml").read_text())
         if args.observability:
             claude_shared = merge_json(claude_shared, json.loads((REPO / "observability/claude.settings.json").read_text()))
-            codex_shared.update(tomllib.loads((REPO / "observability/codex.config.toml").read_text()))
         herdr_source = REPO / "herdr/config.toml"
         tomllib.loads(herdr_source.read_text())
-        changes.update({
-            claude: json.dumps(merge_json(claude_current, claude_shared), ensure_ascii=False, indent=2) + "\n",
-            codex: merge_codex(codex_current, codex_shared),
-        })
+        changes[claude] = json.dumps(merge_json(claude_current, claude_shared), ensure_ascii=False, indent=2) + "\n"
         links.append((herdr, herdr_source))
+    codex_hooks = home / ".codex/hooks.json"
+    trace_command = "python3 " + shlex.quote(str(REPO / "scripts/codex-trace-hook.py"))
+    if observability:
+        current_hooks = json.loads(codex_hooks.read_text()) if codex_hooks.exists() else {}
+        merge_codex_trace_hooks(current_hooks, trace_command)
     backup = home / ".local/state/dotfiles/backups" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
 
     def save(path):
@@ -152,14 +190,23 @@ def main():
         target.symlink_to(source)
         print(f"Linked: {target}")
 
-    if not (args.skip_integrations or args.shell_only):
+    if not (args.skip_integrations or args.shell_only or args.codex_traces_only):
         # Let Herdr generate version-appropriate hooks and paths on each machine.
-        for path in [claude, codex, home / ".codex/hooks.json",
+        for path in [claude, codex, codex_hooks,
                      home / ".claude/hooks/herdr-agent-state.sh",
                      home / ".codex/herdr-agent-state.sh"]:
             save(path)
         for agent in ("claude", "codex"):
             subprocess.run(["herdr", "integration", "install", agent], check=True)
+    if observability:
+        current_hooks = json.loads(codex_hooks.read_text()) if codex_hooks.exists() else {}
+        configured_hooks = json.dumps(merge_codex_trace_hooks(current_hooks, trace_command),
+                                      ensure_ascii=False, indent=2) + "\n"
+        if not codex_hooks.exists() or codex_hooks.read_text() != configured_hooks:
+            save(codex_hooks)
+            codex_hooks.parent.mkdir(parents=True, exist_ok=True)
+            codex_hooks.write_text(configured_hooks)
+            print(f"Applied: {codex_hooks}")
     if backup.exists():
         print(f"Backups: {backup}")
 
