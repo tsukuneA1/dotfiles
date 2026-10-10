@@ -42,8 +42,8 @@ Claude Code・Codexの変更と fish への切り替えは、新しいセッシ�
 | `claude/settings.json` | Opus（1M）、日本語、高いeffort、fullscreen、auto mode、既存のプラグイン設定 | `~/.claude/settings.json` にマージ |
 | `codex/config.toml` | GPT-6.1 Sol、medium、Auto-review、workspace-write、Herdr用hooks | `~/.codex/config.toml` にマージ |
 | `herdr/config.toml` | 作業ディレクトリの引き継ぎ、ペインのエージェント名、アプリ内通知、セッション復元 | `~/.config/herdr/config.toml` へシンボリックリンク |
-| `fish/config.fish` | `cdr` で ghq のリポジトリを fzf から選択 | `~/.config/fish/config.fish` へシンボリックリンク |
-| `bash/exec-fish.bash` | 対話 bash の初期化後に `exec fish` | `~/.bashrc` の末尾に管理ブロックを追加 |
+| `fish/config.fish` | `c` で直下のディレクトリを fzf 選択、`c ..` などの引数付き移動、`cdr` で ghq リポジトリ選択 | `~/.config/fish/config.fish` へシンボリックリンク |
+| `bash/exec-fish.bash` | `c` で直下のディレクトリを fzf 選択、引数付き移動、対話 bash から `exec fish` | `~/.bashrc` の末尾に管理ブロックを追加 |
 
 Claude Codeは `permissions.defaultMode = "auto"`、Codexは `approval_policy = "on-request"` と `approvals_reviewer = "auto_review"` を使用する。
 Claudeのauto modeの利用可否はアカウント・モデル・組織設定にも依存する。
