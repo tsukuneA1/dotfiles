@@ -100,7 +100,57 @@ vim.api.nvim_create_autocmd("TextChangedI", {
       if current_cursor[1] ~= cursor[1] or current_cursor[2] ~= cursor[2] then
         return
       end
+      if vim.bo[buf].filetype == "python" then
+        local matches = {}
+        local seen = {}
+        for name, snippet in pairs(snippets_by_prefix) do
+          if name:sub(1, #prefix) == prefix then
+            matches[#matches + 1] = {
+              word = name,
+              kind = "S",
+              menu = snippet.description or "snippet",
+              user_data = "python_snippet",
+            }
+            seen[name] = true
+          end
+        end
+        if #matches > 0 then
+          table.sort(matches, function(a, b) return a.word < b.word end)
+          -- Keep ordinary names available when a snippet has the same prefix.
+          local line_count = math.min(vim.api.nvim_buf_line_count(buf), 2000)
+          for _, text in ipairs(vim.api.nvim_buf_get_lines(buf, 0, line_count, false)) do
+            for word in text:gmatch("[%a_][%w_]*") do
+              if word ~= prefix and word:sub(1, #prefix) == prefix and not seen[word] then
+                matches[#matches + 1] = { word = word, kind = "W" }
+                seen[word] = true
+                if #matches >= 100 then break end
+              end
+            end
+            if #matches >= 100 then break end
+          end
+          vim.fn.complete(cursor[2] - #prefix + 1, matches)
+          return
+        end
+      end
       vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-n>", true, false, true), "n", false)
+    end)
+  end,
+})
+
+-- Expand a snippet after its completion item is accepted.
+vim.api.nvim_create_autocmd("CompleteDone", {
+  callback = function()
+    local item = vim.v.completed_item
+    if item.user_data ~= "python_snippet" then
+      return
+    end
+    local buf = vim.api.nvim_get_current_buf()
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    vim.schedule(function()
+      if vim.fn.mode() == "i" and vim.api.nvim_get_current_buf() == buf
+          and vim.deep_equal(vim.api.nvim_win_get_cursor(0), cursor) then
+        expand_or_insert_tab()
+      end
     end)
   end,
 })
