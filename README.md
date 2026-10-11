@@ -1,6 +1,6 @@
 # dotfiles
 
-Claude Code、Codex、Herdr、fish の共通設定。
+Claude Code、Codex、Herdr、fish、Neovim の共通設定。
 
 ローカルの実行履歴・使用量を記録する **Langfuse / Grafana / Prometheus** は
 [services/README.md](services/README.md) を参照。
@@ -43,6 +43,8 @@ Claude Code・Codexの変更と fish への切り替えは、新しいセッシ�
 | `codex/config.toml` | GPT-6.1 Sol、medium、Auto-review、workspace-write、Herdr用hooks | `~/.codex/config.toml` にマージ |
 | `herdr/config.toml` | 作業ディレクトリの引き継ぎ、ペインのエージェント名、アプリ内通知、セッション復元 | `~/.config/herdr/config.toml` へシンボリックリンク |
 | `fish/config.fish` | `c` で直下のディレクトリを fzf 選択、`c ..` などの引数付き移動、`cdr` で ghq リポジトリ選択 | `~/.config/fish/config.fish` へシンボリックリンク |
+| `nvim/init.lua` | Python スニペット、入力中の単語補完、Enter での候補確定 | `~/.config/nvim/init.lua` へシンボリックリンク |
+| `nvim/snippets/python.json` | Python 用スニペット | `~/.config/nvim/snippets/python.json` へシンボリックリンク |
 | `bash/exec-fish.bash` | `c` で直下のディレクトリを fzf 選択、引数付き移動、対話 bash から `exec fish` | `~/.bashrc` の末尾に管理ブロックを追加 |
 
 Claude Codeは `permissions.defaultMode = "auto"`、Codexは `approval_policy = "on-request"` と `approvals_reviewer = "auto_review"` を使用する。
@@ -54,7 +56,7 @@ Herdr連携フックは `herdr integration install claude` と `herdr integratio
 
 認証情報、APIキー、履歴、セッション、`settings.local.json`、MCP接続情報は管理対象外。
 変更前のファイルは `~/.local/state/dotfiles/backups/日時/` に保存する。
-戻す場合はバックアップを元の場所へコピーする。Herdrとfishの設定は先にシンボリックリンクを削除してからコピーする。
+戻す場合はバックアップを元の場所へコピーする。Herdr、fish、Neovimの設定は先にシンボリックリンクを削除してからコピーする。
 
 Herdr以外の設定だけを適用する場合や、別ディレクトリで試す場合：
 

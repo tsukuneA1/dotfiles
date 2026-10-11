@@ -1,0 +1,377 @@
+{
+  "int input": {
+    "prefix": "ii",
+    "body": "int(input())",
+    "description": "int(input())"
+  },
+  "map int input": {
+    "prefix": "mi",
+    "body": "map(int, input().split())",
+    "description": "map(int, input().split())"
+  },
+  "list map int input": {
+    "prefix": "li",
+    "body": "list(map(int, input().split()))",
+    "description": "list(map(int, input().split()))"
+  },
+  "strip input": {
+    "prefix": "si",
+    "body": "input().strip()",
+    "description": "input().strip()"
+  },
+  "read a b": {
+    "prefix": "ab",
+    "body": "a, b = map(int, input().split())",
+    "description": "a, b = map(int, input().split())"
+  },
+  "read a b c": {
+    "prefix": "abc",
+    "body": "a, b, c = map(int, input().split())",
+    "description": "a, b, c = map(int, input().split())"
+  },
+  "read list": {
+    "prefix": "arr",
+    "body": "A = list(map(int, input().split()))",
+    "description": "A = list(map(int, input().split()))"
+  },
+
+  "atcoder: main template": {
+    "prefix": "atmain",
+    "description": "solve() 骨格 + 高速入力",
+    "body": [
+      "import sys",
+      "",
+      "def solve():",
+      "  input = sys.stdin.readline",
+      "  $0",
+      "",
+      "if __name__ == \"__main__\":",
+      "  solve()"
+    ]
+  },
+  "atcoder: buffered output": {
+    "prefix": "atout",
+    "description": "答えを貯めて最後に1回で吐く (print N回は TLE 要因)",
+    "body": [
+      "ans = []",
+      "# ans.append(x)  /  ans.append(\" \".join(map(str, row)))",
+      "sys.stdout.write(\"\\n\".join(map(str, ans)) + \"\\n\")"
+    ]
+  },
+  "atcoder: bulk stdin read": {
+    "prefix": "atin",
+    "description": "入力を一括読み (クエリ 2e5 行クラスで readline が重いとき)",
+    "body": [
+      "data = sys.stdin.buffer.read().split()",
+      "it = iter(data)",
+      "N = int(next(it))",
+      "A = [int(next(it)) for _ in range(N)]",
+      "$0"
+    ]
+  },
+  "atcoder: UnionFind": {
+    "prefix": "atuf",
+    "description": "UnionFind (経路圧縮 + union by size, 非再帰)",
+    "body": [
+      "class UnionFind:",
+      "  def __init__(self, n):",
+      "    self.p = [-1]*n  # 負なら根、絶対値が連結成分サイズ",
+      "",
+      "  def find(self, x):",
+      "    r = x",
+      "    while self.p[r] >= 0:",
+      "      r = self.p[r]",
+      "    while self.p[x] >= 0:  # 経路圧縮",
+      "      self.p[x], x = r, self.p[x]",
+      "    return r",
+      "",
+      "  def unite(self, x, y):",
+      "    x, y = self.find(x), self.find(y)",
+      "    if x == y:",
+      "      return False",
+      "    if self.p[x] > self.p[y]:  # サイズが大きい方を根に",
+      "      x, y = y, x",
+      "    self.p[x] += self.p[y]",
+      "    self.p[y] = x",
+      "    return True",
+      "",
+      "  def same(self, x, y):",
+      "    return self.find(x) == self.find(y)",
+      "",
+      "  def size(self, x):",
+      "    return -self.p[self.find(x)]",
+      "$0"
+    ]
+  },
+  "atcoder: BIT (Fenwick Tree)": {
+    "prefix": "atbit",
+    "description": "BIT: 一点加算 + 区間和 O(log N)",
+    "body": [
+      "class BIT:",
+      "  def __init__(self, n):",
+      "    self.n = n",
+      "    self.d = [0]*(n+1)",
+      "",
+      "  def add(self, i, x):  # 0-indexed",
+      "    i += 1",
+      "    while i <= self.n:",
+      "      self.d[i] += x",
+      "      i += i & -i",
+      "",
+      "  def sum(self, r):  # [0, r) の和",
+      "    s = 0",
+      "    while r > 0:",
+      "      s += self.d[r]",
+      "      r -= r & -r",
+      "    return s",
+      "",
+      "  def range_sum(self, l, r):  # [l, r)",
+      "    return self.sum(r) - self.sum(l)",
+      "$0"
+    ]
+  },
+  "atcoder: Dijkstra": {
+    "prefix": "atdij",
+    "description": "ダイクストラ法 (heapq, 遅延削除)",
+    "body": [
+      "import heapq",
+      "",
+      "def dijkstra(g, s, n):  # g[v] = [(to, cost), ...]",
+      "  INF = 1 << 60",
+      "  dist = [INF]*n",
+      "  dist[s] = 0",
+      "  hq = [(0, s)]",
+      "  while hq:",
+      "    d, v = heapq.heappop(hq)",
+      "    if d > dist[v]:",
+      "      continue",
+      "    for to, c in g[v]:",
+      "      if dist[to] > d + c:",
+      "        dist[to] = d + c",
+      "        heapq.heappush(hq, (dist[to], to))",
+      "  return dist",
+      "$0"
+    ]
+  },
+  "atcoder: factorial table + nCr": {
+    "prefix": "atncr",
+    "description": "階乗・逆元テーブル + nCr (mod)",
+    "body": [
+      "MOD = ${1:998244353}",
+      "MX = 2*10**5 + 10",
+      "fact = [1]*MX",
+      "for i in range(1, MX):",
+      "  fact[i] = fact[i-1]*i % MOD",
+      "finv = [1]*MX",
+      "finv[MX-1] = pow(fact[MX-1], MOD-2, MOD)",
+      "for i in range(MX-1, 0, -1):",
+      "  finv[i-1] = finv[i]*i % MOD",
+      "",
+      "def nCr(n, r):",
+      "  if r < 0 or r > n:",
+      "    return 0",
+      "  return fact[n]*finv[r] % MOD * finv[n-r] % MOD",
+      "$0"
+    ]
+  },
+  "atcoder: iterative DFS (order + par)": {
+    "prefix": "atdfs",
+    "description": "非再帰DFS: 行きがけ順を記録し reversed で帰りがけ処理",
+    "body": [
+      "# 行きがけ順を order に記録 -> reversed(order) が帰りがけ順になる",
+      "order, par = [], [-1]*n",
+      "seen = [False]*n",
+      "st = [${1:0}]",
+      "seen[${1:0}] = True",
+      "while st:",
+      "  v = st.pop()",
+      "  order.append(v)",
+      "  for to in g[v]:",
+      "    if not seen[to]:",
+      "      seen[to] = True",
+      "      par[to] = v",
+      "      st.append(to)",
+      "",
+      "# 帰りがけ (子が先に処理済み): 部分木サイズ・木DP",
+      "sub = [1]*n",
+      "for v in reversed(order):",
+      "  if par[v] >= 0:",
+      "    sub[par[v]] += sub[v]",
+      "$0"
+    ]
+  },
+  "atcoder: BFS on graph": {
+    "prefix": "atbfs",
+    "description": "グラフBFS (dist を -1 初期化して訪問管理と兼用)",
+    "body": [
+      "from collections import deque",
+      "",
+      "dist = [-1]*n",
+      "dist[${1:0}] = 0",
+      "q = deque([${1:0}])",
+      "while q:",
+      "  v = q.popleft()",
+      "  for to in g[v]:",
+      "    if dist[to] == -1:",
+      "      dist[to] = dist[v] + 1  # append する時点で訪問済みにする",
+      "      q.append(to)",
+      "$0"
+    ]
+  },
+  "atcoder: BFS on grid": {
+    "prefix": "atbfsg",
+    "description": "グリッドBFS (4近傍, 壁 '#')",
+    "body": [
+      "from collections import deque",
+      "",
+      "dist = [[-1]*W for _ in range(H)]",
+      "dist[sr][sc] = 0",
+      "q = deque([(sr, sc)])",
+      "while q:",
+      "  r, c = q.popleft()",
+      "  for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):",
+      "    nr, nc = r+dr, c+dc",
+      "    if 0 <= nr < H and 0 <= nc < W and S[nr][nc] != \"#\" and dist[nr][nc] == -1:",
+      "      dist[nr][nc] = dist[r][c] + 1  # append する時点で訪問済みにする",
+      "      q.append((nr, nc))",
+      "$0"
+    ]
+  },
+  "atcoder: grid 4-neighbor loop": {
+    "prefix": "atgrid",
+    "description": "4近傍ループ + 境界判定だけ",
+    "body": [
+      "for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):",
+      "  nr, nc = r+dr, c+dc",
+      "  if 0 <= nr < H and 0 <= nc < W:",
+      "    $0"
+    ]
+  },
+  "atcoder: cumulative sum": {
+    "prefix": "atacc",
+    "description": "1次元累積和 (itertools.accumulate)",
+    "body": [
+      "from itertools import accumulate",
+      "acc = list(accumulate(${1:A}, initial=0))",
+      "# [l, r) の和: acc[r] - acc[l]",
+      "$0"
+    ]
+  },
+  "atcoder: 2D cumulative sum": {
+    "prefix": "at2d",
+    "description": "2次元累積和",
+    "body": [
+      "S = [[0]*(W+1) for _ in range(H+1)]",
+      "for i in range(H):",
+      "  for j in range(W):",
+      "    S[i+1][j+1] = S[i][j+1] + S[i+1][j] - S[i][j] + A[i][j]",
+      "# [r1, r2) x [c1, c2) の和:",
+      "# S[r2][c2] - S[r1][c2] - S[r2][c1] + S[r1][c1]",
+      "$0"
+    ]
+  },
+  "atcoder: imos 1D": {
+    "prefix": "atimos",
+    "description": "imos法 (区間加算 -> 最後に累積和)",
+    "body": [
+      "imos = [0]*(${1:N}+1)",
+      "# 区間 [l, r) に x を足す",
+      "# imos[l] += x; imos[r] -= x",
+      "for i in range(${1:N}):",
+      "  imos[i+1] += imos[i]",
+      "$0"
+    ]
+  },
+  "atcoder: binary search on answer": {
+    "prefix": "atbs",
+    "description": "答えで二分探索 (ok/ng 形式, 境界バグりにくい)",
+    "body": [
+      "def check(x):",
+      "  return ${1:True}",
+      "",
+      "ok, ng = ${2:0}, ${3:10**18}  # check(ok) が True, check(ng) が False になる側",
+      "while abs(ok - ng) > 1:",
+      "  mid = (ok + ng) // 2",
+      "  if check(mid):",
+      "    ok = mid",
+      "  else:",
+      "    ng = mid",
+      "print(ok)",
+      "$0"
+    ]
+  },
+  "atcoder: coordinate compression": {
+    "prefix": "atcomp",
+    "description": "座標圧縮",
+    "body": [
+      "xs = sorted(set(${1:A}))",
+      "idx = {x: i for i, x in enumerate(xs)}",
+      "# 元の値 -> idx[x], 復元 -> xs[i]",
+      "$0"
+    ]
+  },
+  "atcoder: sieve (smallest prime factor)": {
+    "prefix": "atsieve",
+    "description": "エラトステネス (最小素因数テーブル) + O(log N) 素因数分解",
+    "body": [
+      "def sieve(n):  # spf[x] = x の最小素因数",
+      "  spf = list(range(n+1))",
+      "  i = 2",
+      "  while i*i <= n:",
+      "    if spf[i] == i:",
+      "      for j in range(i*i, n+1, i):",
+      "        if spf[j] == j:",
+      "          spf[j] = i",
+      "    i += 1",
+      "  return spf",
+      "",
+      "def factorize_spf(x, spf):",
+      "  res = {}",
+      "  while x > 1:",
+      "    p = spf[x]",
+      "    while x % p == 0:",
+      "      res[p] = res.get(p, 0) + 1",
+      "      x //= p",
+      "  return res",
+      "$0"
+    ]
+  },
+  "atcoder: trial division factorize": {
+    "prefix": "atfact",
+    "description": "試し割り素因数分解 O(sqrt N)",
+    "body": [
+      "def factorize(n):",
+      "  res = {}",
+      "  d = 2",
+      "  while d*d <= n:",
+      "    while n % d == 0:",
+      "      res[d] = res.get(d, 0) + 1",
+      "      n //= d",
+      "    d += 1",
+      "  if n > 1:",
+      "    res[n] = res.get(n, 0) + 1",
+      "  return res",
+      "$0"
+    ]
+  },
+  "atcoder: SortedList": {
+    "prefix": "atsl",
+    "description": "sortedcontainers.SortedList (挿入削除しながら二分探索)",
+    "body": [
+      "from sortedcontainers import SortedList",
+      "",
+      "sl = SortedList(${1:})",
+      "# sl.add(x) / sl.remove(x) / sl.bisect_left(x) / sl[i] が全て O(log N)",
+      "$0"
+    ]
+  },
+  "atcoder: recursion limit": {
+    "prefix": "atrec",
+    "description": "再帰上限引き上げ (それでも PyPy は非再帰推奨)",
+    "body": [
+      "import sys",
+      "sys.setrecursionlimit(10**6)",
+      "$0"
+    ]
+  }
+}

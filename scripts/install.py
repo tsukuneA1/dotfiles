@@ -134,6 +134,8 @@ def main():
     config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config"))) if home == Path.home().resolve() else home / ".config"
     herdr = config_home / "herdr/config.toml"
     fish = config_home / "fish/config.fish"
+    nvim_init = config_home / "nvim/init.lua"
+    nvim_python_snippets = config_home / "nvim/snippets/python.json"
     # Validate everything before touching the real configuration.
     changes = {}
     links = []
@@ -156,6 +158,8 @@ def main():
         tomllib.loads(herdr_source.read_text())
         changes[claude] = json.dumps(merge_json(claude_current, claude_shared), ensure_ascii=False, indent=2) + "\n"
         links.append((herdr, herdr_source))
+        links.append((nvim_init, REPO / "nvim/init.lua"))
+        links.append((nvim_python_snippets, REPO / "nvim/snippets/python.json"))
     codex_hooks = home / ".codex/hooks.json"
     trace_command = "python3 " + shlex.quote(str(REPO / "scripts/codex-trace-hook.py"))
     if observability:
