@@ -1,3 +1,8 @@
+vim.g.mapleader = " "
+vim.keymap.set("n", "<leader>y", "<Cmd>%y+<CR>", {
+  desc = "Copy the whole file to the system clipboard",
+})
+
 -- Load VS Code-style Python snippets and expand them with <Tab>.
 local snippet_file = vim.fn.stdpath("config") .. "/snippets/python.json"
 local snippet_lines = vim.fn.readfile(snippet_file)
