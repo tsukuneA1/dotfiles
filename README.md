@@ -43,9 +43,11 @@ Claude Code・Codexの変更と fish への切り替えは、新しいセッシ�
 | `codex/config.toml` | GPT-6.1 Sol、medium、Auto-review、workspace-write、Herdr用hooks | `~/.codex/config.toml` にマージ |
 | `herdr/config.toml` | 作業ディレクトリの引き継ぎ、ペインのエージェント名、アプリ内通知、セッション復元 | `~/.config/herdr/config.toml` へシンボリックリンク |
 | `fish/config.fish` | `c` で直下のディレクトリを fzf 選択、`c ..` などの引数付き移動、`cdr` で ghq リポジトリ選択 | `~/.config/fish/config.fish` へシンボリックリンク |
-| `nvim/init.lua` | Python スニペットと単語の候補表示、Enter での確定・展開 | `~/.config/nvim/init.lua` へシンボリックリンク |
+| `nvim/init.lua` | Python スニペットと単語の候補表示、Enter での確定・展開、`:cd<Tab>` でディレクトリを fzf 選択 | `~/.config/nvim/init.lua` へシンボリックリンク |
 | `nvim/snippets/python.json` | Python 用スニペット | `~/.config/nvim/snippets/python.json` へシンボリックリンク |
 | `bash/exec-fish.bash` | `c` で直下のディレクトリを fzf 選択、引数付き移動、対話 bash から `exec fish` | `~/.bashrc` の末尾に管理ブロックを追加 |
+
+Neovim では `:cd<Tab>` でカレントディレクトリ以下を選び、`:cd hoge/<Tab>` で `hoge/` 以下を選べる。候補は 6 階層まで表示し、選択するとそのディレクトリへ移動する。
 
 Claude Codeは `permissions.defaultMode = "auto"`、Codexは `approval_policy = "on-request"` と `approvals_reviewer = "auto_review"` を使用する。
 Claudeのauto modeの利用可否はアカウント・モデル・組織設定にも依存する。

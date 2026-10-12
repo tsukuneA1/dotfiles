@@ -159,3 +159,60 @@ vim.api.nvim_create_autocmd("CompleteDone", {
 vim.keymap.set("i", "<CR>", function()
   return vim.fn.pumvisible() == 1 and "<C-y>" or "<CR>"
 end, { expr = true, desc = "Accept completion or insert newline" })
+
+-- Pick a directory from :cd with fzf.  :cd hoge/<Tab> searches below hoge.
+local function fzf_cd(argument)
+  if vim.fn.executable("fzf") ~= 1 then
+    vim.notify("fzf is required for :cd completion", vim.log.levels.WARN)
+    return
+  end
+
+  local parent, query = argument:match("^(.*)/([^/]*)$")
+  local root = parent or "."
+  query = query or argument
+  if root == "" then root = "/" end
+  root = vim.fn.expand(root)
+  if vim.fn.isdirectory(root) ~= 1 then
+    vim.notify("Not a directory: " .. root, vim.log.levels.WARN)
+    return
+  end
+
+  local output = vim.fn.tempname()
+  local width = math.max(1, math.floor(vim.o.columns * 0.8))
+  local height = math.max(1, math.floor(vim.o.lines * 0.6))
+  local buffer = vim.api.nvim_create_buf(false, true)
+  local window = vim.api.nvim_open_win(buffer, true, {
+    relative = "editor",
+    row = math.floor((vim.o.lines - height) / 2),
+    col = math.floor((vim.o.columns - width) / 2),
+    width = width,
+    height = height,
+    style = "minimal",
+    border = "single",
+  })
+
+  local script = [[
+find "$1" -mindepth 1 -maxdepth 6 \( -name .git -o -name node_modules -o -name .venv -o -name dist -o -name build \) -prune -o -type d -print |
+  fzf --scheme=path --query "$3" --prompt='cd> ' > "$2"
+]]
+  vim.fn.termopen({ "sh", "-c", script, "sh", root, output, query }, {
+    on_exit = function()
+      vim.schedule(function()
+        if vim.api.nvim_win_is_valid(window) then vim.api.nvim_win_close(window, true) end
+        local selected = vim.fn.filereadable(output) == 1 and vim.fn.readfile(output)[1] or nil
+        vim.fn.delete(output)
+        if selected and selected ~= "" then vim.api.nvim_set_current_dir(selected) end
+      end)
+    end,
+  })
+  vim.cmd.startinsert()
+end
+
+vim.keymap.set("c", "<Tab>", function()
+  if vim.fn.getcmdtype() ~= ":" then return "<Tab>" end
+  local line = vim.fn.getcmdline()
+  local command, argument = line:match("^%s*(%a+)%s*(.*)$")
+  if command ~= "cd" or vim.fn.getcmdpos() ~= #line + 1 then return "<Tab>" end
+  vim.schedule(function() fzf_cd(argument) end)
+  return "<C-c>"
+end, { expr = true, desc = "Select a directory for :cd with fzf" })
