@@ -1,7 +1,23 @@
 vim.g.mapleader = " "
--- Keep :pwd aligned with the directory shown by netrw or the current file.
-vim.g.netrw_keepdir = 0
+-- Expand netrw directories in place; follow the directory of an opened file.
+vim.g.netrw_keepdir = 1
+vim.g.netrw_liststyle = 3
 vim.opt.autochdir = true
+vim.api.nvim_create_autocmd("BufEnter", {
+  callback = function(args)
+    vim.schedule(function()
+      if not vim.api.nvim_buf_is_valid(args.buf) or vim.api.nvim_get_current_buf() ~= args.buf
+          or vim.bo[args.buf].buftype ~= ""
+          or vim.bo[args.buf].filetype == "netrw" then
+        return
+      end
+      local name = vim.api.nvim_buf_get_name(args.buf)
+      if name == "" then return end
+      local directory = vim.fn.fnamemodify(name, ":p:h")
+      if vim.fn.isdirectory(directory) == 1 then vim.api.nvim_set_current_dir(directory) end
+    end)
+  end,
+})
 vim.keymap.set("n", "<leader>y", "<Cmd>%y+<CR>", {
   desc = "Copy the whole file to the system clipboard",
 })
