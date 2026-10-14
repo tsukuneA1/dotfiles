@@ -1,4 +1,7 @@
 vim.g.mapleader = " "
+-- Keep :pwd aligned with the directory shown by netrw or the current file.
+vim.g.netrw_keepdir = 0
+vim.opt.autochdir = true
 vim.keymap.set("n", "<leader>y", "<Cmd>%y+<CR>", {
   desc = "Copy the whole file to the system clipboard",
 })
