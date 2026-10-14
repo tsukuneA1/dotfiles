@@ -43,7 +43,7 @@ Claude Code・Codexの変更と fish への切り替えは、新しいセッシ�
 | `codex/config.toml` | GPT-6.1 Sol、medium、Auto-review、workspace-write、Herdr用hooks | `~/.codex/config.toml` にマージ |
 | `herdr/config.toml` | 作業ディレクトリの引き継ぎ、ペインのエージェント名、アプリ内通知、セッション復元 | `~/.config/herdr/config.toml` へシンボリックリンク |
 | `fish/config.fish` | `c` で直下のディレクトリを fzf 選択、`c ..` などの引数付き移動、`cdr` で ghq リポジトリ選択 | `~/.config/fish/config.fish` へシンボリックリンク |
-| `nvim/init.lua` | netrw のツリー表示と `:cd` 後の表示更新、ファイルを開いたときの作業ディレクトリ追従、Git の変更表示、Python スニペットと単語の候補表示、Enter での確定・展開、`:cd<Tab>` でディレクトリを fzf 選択、`-` で netrw を開く、`Space y` でファイル全体をコピー | `~/.config/nvim/init.lua` へシンボリックリンク |
+| `nvim/init.lua` | netrw のツリー表示と `:cd` 後の表示更新、ファイルを開いたときの作業ディレクトリ追従、PDF を xpdf で表示、Git の変更表示、Python スニペットと単語の候補表示、Enter での確定・展開、`:cd<Tab>` でディレクトリを fzf 選択、`-` で netrw を開く、`Space y` でファイル全体をコピー | `~/.config/nvim/init.lua` へシンボリックリンク |
 | `nvim/snippets/python.json` | Python 用スニペット | `~/.config/nvim/snippets/python.json` へシンボリックリンク |
 | `bash/exec-fish.bash` | `c` で直下のディレクトリを fzf 選択、引数付き移動、対話 bash から `exec fish` | `~/.bashrc` の末尾に管理ブロックを追加 |
 
@@ -52,6 +52,7 @@ Neovim では `:cd<Tab>` でカレントディレクトリ以下を選び、`:cd
 `:cd` や `:cd<Tab>` で移動すると、表示中のツリーの起点も移動先に切り替わる。
 ノーマルモードで `Space y` を押すと、ファイル全体をシステムクリップボードにコピーする。
 ノーマルモードで `-` を押すと netrw に戻る。Git 管理下のファイルでは、左端に追加 `+`、変更 `~`、削除 `_` を表示する。netrw では変更ファイルに `M` などの状態を表示し、変更を含むディレクトリに `●` を表示する。
+PDF を開くと Linux 側の `xpdf` ウィンドウでページを表示する。netrw から開いた場合は一覧に戻り、PDF を直接指定して起動した場合はそのディレクトリの一覧を開く。PDF の閲覧には `xpdf` が必要。
 
 Claude Codeは `permissions.defaultMode = "auto"`、Codexは `approval_policy = "on-request"` と `approvals_reviewer = "auto_review"` を使用する。
 Claudeのauto modeの利用可否はアカウント・モデル・組織設定にも依存する。

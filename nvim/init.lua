@@ -44,6 +44,42 @@ vim.keymap.set("n", "-", "<Cmd>Explore<CR>", {
   desc = "Open netrw in the current window",
 })
 
+-- Open PDF pages in the local graphical viewer instead of reading binary data.
+vim.api.nvim_create_autocmd("BufReadCmd", {
+  pattern = { "*.pdf", "*.PDF" },
+  callback = function(args)
+    local path = vim.api.nvim_buf_get_name(args.buf)
+    if vim.fn.executable("xpdf") ~= 1 then
+      vim.notify("xpdf is required to view PDFs", vim.log.levels.ERROR)
+      return
+    end
+    local job = vim.fn.jobstart({ "xpdf", path }, {
+      detach = true,
+      on_exit = function(_, code)
+        if code ~= 0 then
+          vim.schedule(function()
+            vim.notify("xpdf exited with status " .. code .. ": " .. path, vim.log.levels.ERROR)
+          end)
+        end
+      end,
+    })
+    if job <= 0 then
+      vim.notify("Could not open PDF: " .. path, vim.log.levels.ERROR)
+      return
+    end
+    vim.bo[args.buf].buftype = "nofile"
+    vim.bo[args.buf].swapfile = false
+    vim.schedule(function()
+      if not vim.api.nvim_buf_is_valid(args.buf) then return end
+      local was_current = vim.api.nvim_get_current_buf() == args.buf
+      vim.api.nvim_buf_delete(args.buf, { force = true })
+      if was_current and vim.api.nvim_buf_get_name(0) == "" then
+        vim.cmd("Explore " .. vim.fn.fnameescape(vim.fn.fnamemodify(path, ":h")))
+      end
+    end)
+  end,
+})
+
 -- Show Git changes in file buffers and in netrw's tree listing.
 vim.api.nvim_set_hl(0, "GitMarkAdd", { default = true, fg = "#7fbf7f" })
 vim.api.nvim_set_hl(0, "GitMarkChange", { default = true, fg = "#e5c07b" })
