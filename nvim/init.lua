@@ -2,9 +2,8 @@ vim.g.mapleader = " "
 -- Expand netrw directories in place; follow the directory of an opened file.
 vim.g.netrw_keepdir = 1
 vim.g.netrw_liststyle = 3
-vim.opt.autochdir = true
 vim.api.nvim_create_autocmd("DirChanged", {
-  pattern = { "global", "tabpage", "window" },
+  pattern = "global",
   callback = function(args)
     local directory = args.file
     vim.schedule(function()
