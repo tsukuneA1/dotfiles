@@ -90,6 +90,35 @@ vim.fn.sign_define("GitMarkDelete", { text = "_", texthl = "GitMarkDelete" })
 local netrw_git_ns = vim.api.nvim_create_namespace("netrw_git_marks")
 local git_buffers = {}
 local netrw_ticks = {}
+local netrw_pending = {}
+local home_directory = vim.fn.expand("~"):gsub("/$", "")
+-- Nerd Fonts glyphs, kept local so netrw and :cd completion need no plugin at startup.
+local netrw_icons = {
+  Folder = { "", "#82aaff" }, File = { "", "#aab2bf" },
+  Code = { "", "#a9b7c6" }, Python = { "", "#4b8bbe" },
+  Lua = { "", "#51a0cf" }, Markdown = { "", "#519aba" },
+  PDF = { "", "#e06c75" }, Image = { "", "#d19a66" },
+  Config = { "", "#6d8086" }, Archive = { "", "#d19a66" },
+  Web = { "", "#e44d26" }, Rust = { "", "#dea584" },
+  Go = { "", "#519aba" }, Audio = { "", "#c678dd" },
+  Video = { "", "#c678dd" },
+}
+local extension_icons = {
+  py = "Python", lua = "Lua", md = "Markdown", markdown = "Markdown", pdf = "PDF",
+  png = "Image", jpg = "Image", jpeg = "Image", gif = "Image", svg = "Image", webp = "Image",
+  json = "Config", yaml = "Config", yml = "Config", toml = "Config", ini = "Config",
+  zip = "Archive", tar = "Archive", gz = "Archive", xz = "Archive", tgz = "Archive",
+  html = "Web", htm = "Web", css = "Web", scss = "Web",
+  rs = "Rust", go = "Go", mp3 = "Audio", wav = "Audio", mp4 = "Video", webm = "Video",
+  js = "Code", jsx = "Code", ts = "Code", tsx = "Code", sh = "Code", fish = "Code",
+  c = "Code", h = "Code", cpp = "Code", hpp = "Code", java = "Code", rb = "Code",
+}
+for name, icon in pairs(netrw_icons) do
+  vim.api.nvim_set_hl(0, "NetrwIcon" .. name, { default = true, fg = icon[2] })
+  vim.fn.sign_define("NetrwIcon" .. name, {
+    text = icon[1], texthl = "NetrwIcon" .. name,
+  })
+end
 
 local function git_lines(args)
   local lines = vim.fn.systemlist(args)
@@ -97,8 +126,11 @@ local function git_lines(args)
 end
 
 local function git_root(directory)
+  if directory == home_directory then return nil end
   local result = git_lines({ "git", "-C", directory, "rev-parse", "--show-toplevel" })
-  return result and result[1] or nil
+  local root = result and result[1] or nil
+  -- The home repository contains caches and other unrelated directories.
+  return root ~= home_directory and root or nil
 end
 
 local function relative_path(root, path)
@@ -107,10 +139,11 @@ local function relative_path(root, path)
 end
 
 local function update_file_marks(buf, refresh_base)
-  if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].buftype ~= ""
+  if not vim.api.nvim_buf_is_valid(buf) or vim.api.nvim_get_current_buf() ~= buf
+      or vim.bo[buf].buftype ~= ""
       or vim.bo[buf].filetype == "netrw" then return end
   local path = vim.api.nvim_buf_get_name(buf)
-  if path == "" then return end
+  if path == "" or vim.fn.isdirectory(path) == 1 then return end
   if vim.api.nvim_buf_line_count(buf) > 20000 or vim.fn.getfsize(path) > 1024 * 1024 then return end
 
   local state = git_buffers[buf]
@@ -149,25 +182,22 @@ local function update_file_marks(buf, refresh_base)
   if vim.api.nvim_get_current_buf() == buf then vim.wo.signcolumn = "yes" end
 end
 
-local function update_netrw_marks(buf, force)
-  if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].filetype ~= "netrw" then return end
-  local tick = vim.api.nvim_buf_get_changedtick(buf)
-  if not force and netrw_ticks[buf] == tick then return end
-  netrw_ticks[buf] = tick
-  vim.api.nvim_buf_clear_namespace(buf, netrw_git_ns, 0, -1)
-
-  local tree_root = vim.w.netrw_treetop
-  if not tree_root or tree_root == "" then return end
-  tree_root = tree_root:gsub("/$", "")
+local function netrw_git_status(tree_root)
+  local files, directories = {}, {}
   local root = git_root(tree_root)
-  if not root then return end
-  local output = vim.fn.system({ "git", "-C", root, "status", "--porcelain=v1", "-z",
-    "--untracked-files=all" })
-  if vim.v.shell_error ~= 0 then return end
+  if not root then return files, directories end
+  local command = { "git", "-C", root, "status", "--porcelain=v1", "-z",
+    "--untracked-files=all" }
+  local subtree = relative_path(root, tree_root)
+  if subtree then
+    command[#command + 1] = "--"
+    command[#command + 1] = subtree
+  end
+  local output = vim.fn.system(command)
+  if vim.v.shell_error ~= 0 then return files, directories end
   -- Vimscript strings represent the NUL separators from Git as Ctrl-A.
   local entries = vim.split(output, "\1", { plain = true })
 
-  local files, directories = {}, {}
   local index = 1
   while index <= #entries do
     local entry = entries[index]
@@ -186,6 +216,22 @@ local function update_netrw_marks(buf, force)
     end
     index = index + 1
   end
+  return files, directories
+end
+
+local function update_netrw_marks(buf, force)
+  if not vim.api.nvim_buf_is_valid(buf) or vim.api.nvim_get_current_buf() ~= buf
+      or vim.bo[buf].filetype ~= "netrw" then return end
+  local tick = vim.api.nvim_buf_get_changedtick(buf)
+  if not force and netrw_ticks[buf] == tick then return end
+  netrw_ticks[buf] = tick
+  vim.api.nvim_buf_clear_namespace(buf, netrw_git_ns, 0, -1)
+  vim.fn.sign_unplace("NetrwIcons", { buffer = buf })
+
+  local tree_root = vim.w.netrw_treetop
+  if not tree_root or tree_root == "" then return end
+  tree_root = tree_root:gsub("/$", "")
+  local files, directories = netrw_git_status(tree_root)
 
   local parents = {}
   for row, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
@@ -197,6 +243,11 @@ local function update_netrw_marks(buf, force)
       local parent = depth > 1 and parents[depth - 1] or nil
       local path = parent and parent .. "/" .. name or name
       if is_directory then parents[depth] = path end
+      local extension = name:match("%.([^%.]+)$")
+      local icon = is_directory and "Folder"
+        or extension and extension_icons[extension:lower()] or "File"
+      vim.fn.sign_place(0, "NetrwIcons", "NetrwIcon" .. icon, buf,
+        { lnum = row, priority = 1 })
       local kind = is_directory and directories[path] and "●" or files[path]
       if kind then
         local hl = (kind == "?" or kind == "A") and "GitMarkAdd"
@@ -207,6 +258,21 @@ local function update_netrw_marks(buf, force)
       end
     end
   end
+  vim.wo.signcolumn = "yes"
+end
+
+local function queue_netrw_marks(buf, force)
+  if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].filetype ~= "netrw" then return end
+  if netrw_pending[buf] then
+    netrw_pending[buf].force = netrw_pending[buf].force or force
+    return
+  end
+  netrw_pending[buf] = { force = force }
+  vim.defer_fn(function()
+    local pending = netrw_pending[buf]
+    netrw_pending[buf] = nil
+    if pending then update_netrw_marks(buf, pending.force) end
+  end, 150)
 end
 
 vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "FocusGained" }, {
@@ -214,7 +280,7 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "FocusGained" }, {
     vim.schedule(function()
       if not vim.api.nvim_buf_is_valid(args.buf) then return end
       if vim.bo[args.buf].filetype == "netrw" then
-        update_netrw_marks(args.buf, true)
+        queue_netrw_marks(args.buf, true)
       else
         update_file_marks(args.buf, true)
       end
@@ -224,13 +290,13 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "FocusGained" }, {
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "netrw",
   callback = function(args)
-    vim.schedule(function() update_netrw_marks(args.buf, true) end)
+    queue_netrw_marks(args.buf, true)
   end,
 })
 vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
   callback = function(args)
     if vim.bo[args.buf].filetype == "netrw" then
-      vim.schedule(function() update_netrw_marks(args.buf, false) end)
+      queue_netrw_marks(args.buf, false)
     else
       local tick = vim.api.nvim_buf_get_changedtick(args.buf)
       vim.defer_fn(function()
@@ -244,13 +310,17 @@ vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
 })
 vim.api.nvim_create_autocmd("CursorMoved", {
   callback = function(args)
-    if vim.bo[args.buf].filetype == "netrw" then update_netrw_marks(args.buf, false) end
+    if vim.bo[args.buf].filetype == "netrw"
+        and netrw_ticks[args.buf] ~= vim.api.nvim_buf_get_changedtick(args.buf) then
+      queue_netrw_marks(args.buf, false)
+    end
   end,
 })
 vim.api.nvim_create_autocmd("BufWipeout", {
   callback = function(args)
     git_buffers[args.buf] = nil
     netrw_ticks[args.buf] = nil
+    netrw_pending[args.buf] = nil
   end,
 })
 
@@ -449,13 +519,14 @@ local function fzf_cd(argument)
 
   local script = [[
 find "$1" -mindepth 1 -maxdepth 6 \( -name .git -o -name node_modules -o -name .venv -o -name dist -o -name build \) -prune -o -type d -print |
-  fzf --scheme=path --query "$3" --prompt='cd> ' > "$2"
+  sed 's/^/ /' | fzf --nth=2.. --scheme=path --query "$3" --prompt='cd> ' > "$2"
 ]]
   vim.fn.termopen({ "sh", "-c", script, "sh", root, output, query }, {
     on_exit = function()
       vim.schedule(function()
         if vim.api.nvim_win_is_valid(window) then vim.api.nvim_win_close(window, true) end
-        local selected = vim.fn.filereadable(output) == 1 and vim.fn.readfile(output)[1] or nil
+        local selection = vim.fn.filereadable(output) == 1 and vim.fn.readfile(output)[1] or nil
+        local selected = selection and selection:match("^ (.*)$")
         vim.fn.delete(output)
         if selected and selected ~= "" then vim.api.nvim_set_current_dir(selected) end
       end)

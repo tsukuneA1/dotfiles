@@ -48,10 +48,12 @@ Claude Code・Codexの変更と fish への切り替えは、新しいセッシ�
 | `bash/exec-fish.bash` | `c` で直下のディレクトリを fzf 選択、引数付き移動、対話 bash から `exec fish` | `~/.bashrc` の末尾に管理ブロックを追加 |
 
 Neovim では `:cd<Tab>` でカレントディレクトリ以下を選び、`:cd hoge/<Tab>` で `hoge/` 以下を選べる。候補は 6 階層まで表示し、選択するとそのディレクトリへ移動する。
+`:cd<Tab>` の候補にはフォルダーアイコンを表示する。netrw の一覧では左端にフォルダーや拡張子に応じたファイルアイコンを表示する。アイコンには [Nerd Fonts](https://www.nerdfonts.com/font-downloads) の記号を使うため、**画面を描画する端末のフォント**に Nerd Font を指定する必要がある。WSL の Ubuntu を Windows Terminal で開いている場合は、Windows 側で Nerd Font を「すべてのユーザーに対してインストール」し、Windows Terminal のフォント フェイスで選ぶ。この PC では全プロファイル共通で `0xProto Nerd Font Mono` を指定している。Ubuntu 内の `~/.local/share/fonts` に入れるだけでは Windows Terminal の表示は変わらない。
 `nvim .` のディレクトリ一覧はツリー表示になり、ディレクトリ上で Enter を押すと `:pwd` を変えずにその場で展開・折りたたみできる。ファイルを開いた場合はそのファイルのディレクトリに移る。
 `:cd` や `:cd<Tab>` で移動すると、表示中のツリーの起点も移動先に切り替わる。
 ノーマルモードで `Space y` を押すと、ファイル全体をシステムクリップボードにコピーする。
 ノーマルモードで `-` を押すと netrw に戻る。Git 管理下のファイルでは、左端に追加 `+`、変更 `~`、削除 `_` を表示する。netrw では変更ファイルに `M` などの状態を表示し、変更を含むディレクトリに `●` を表示する。
+ホームディレクトリの Git 表示は省略する。ホーム全体の変更確認による起動時の遅延を防ぐため、他のディレクトリの Git 表示も一覧が開いた後にまとめて更新する。
 PDF を開くと Linux 側の `xpdf` ウィンドウでページを表示する。netrw から開いた場合は一覧に戻り、PDF を直接指定して起動した場合はそのディレクトリの一覧を開く。PDF の閲覧には `xpdf` が必要。
 
 Claude Codeは `permissions.defaultMode = "auto"`、Codexは `approval_policy = "on-request"` と `approvals_reviewer = "auto_review"` を使用する。
