@@ -40,6 +40,9 @@ vim.api.nvim_create_autocmd("BufEnter", {
 vim.keymap.set("n", "<leader>y", "<Cmd>%y+<CR>", {
   desc = "Copy the whole file to the system clipboard",
 })
+vim.keymap.set("n", "-", "<Cmd>Explore<CR>", {
+  desc = "Open netrw in the current window",
+})
 
 -- Load VS Code-style Python snippets and expand them with <Tab>.
 local snippet_file = vim.fn.stdpath("config") .. "/snippets/python.json"
