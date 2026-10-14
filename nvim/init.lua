@@ -3,10 +3,30 @@ vim.g.mapleader = " "
 vim.g.netrw_keepdir = 1
 vim.g.netrw_liststyle = 3
 vim.opt.autochdir = true
+vim.api.nvim_create_autocmd("DirChanged", {
+  pattern = { "global", "tabpage", "window" },
+  callback = function(args)
+    local directory = args.file
+    vim.schedule(function()
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if vim.api.nvim_win_is_valid(win)
+            and vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "netrw" then
+          vim.api.nvim_win_call(win, function()
+            if vim.fn.getcwd() == directory and vim.w.netrw_treetop ~= directory then
+              vim.cmd("Ntree " .. vim.fn.fnameescape(directory))
+            end
+          end)
+        end
+      end
+    end)
+  end,
+})
 vim.api.nvim_create_autocmd("BufEnter", {
   callback = function(args)
+    local cwd_at_enter = vim.fn.getcwd()
     vim.schedule(function()
-      if not vim.api.nvim_buf_is_valid(args.buf) or vim.api.nvim_get_current_buf() ~= args.buf
+      if vim.fn.getcwd() ~= cwd_at_enter or not vim.api.nvim_buf_is_valid(args.buf)
+          or vim.api.nvim_get_current_buf() ~= args.buf
           or vim.bo[args.buf].buftype ~= ""
           or vim.bo[args.buf].filetype == "netrw" then
         return
