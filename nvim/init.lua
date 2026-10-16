@@ -1,4 +1,25 @@
 vim.g.mapleader = " "
+-- Draw a guide at each four-space indentation level (including Python).
+vim.opt.list = true
+vim.opt.listchars = { tab = "│ ", leadmultispace = "│   ", trail = "·" }
+local function highlight_indent_guides()
+  vim.api.nvim_set_hl(0, "Whitespace", { fg = "#8a9bb0", ctermfg = 246 })
+end
+highlight_indent_guides()
+vim.api.nvim_create_autocmd("ColorScheme", { callback = highlight_indent_guides })
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "python",
+  callback = function()
+    vim.bo.expandtab = true
+    vim.bo.shiftwidth = 4
+    vim.bo.softtabstop = 4
+    vim.bo.tabstop = 4
+  end,
+})
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "netrw",
+  callback = function() vim.opt_local.list = false end,
+})
 -- Expand netrw directories in place; follow the directory of an opened file.
 vim.g.netrw_keepdir = 1
 vim.g.netrw_liststyle = 3
@@ -404,14 +425,30 @@ vim.api.nvim_create_autocmd("FileType", {
 -- Show keyword matches automatically while typing.  Ctrl-N completion also
 -- searches other loaded buffers, so names from open files appear here too.
 vim.opt.completeopt = { "menuone", "noinsert" }
+local accepted_completion
+local function remember_accepted_completion()
+  accepted_completion = {
+    buf = vim.api.nvim_get_current_buf(),
+    cursor = vim.api.nvim_win_get_cursor(0),
+    line = vim.api.nvim_get_current_line(),
+  }
+end
 vim.api.nvim_create_autocmd("TextChangedI", {
   callback = function()
+    if accepted_completion then
+      local same_text = accepted_completion.buf == vim.api.nvim_get_current_buf()
+        and vim.deep_equal(accepted_completion.cursor, vim.api.nvim_win_get_cursor(0))
+        and accepted_completion.line == vim.api.nvim_get_current_line()
+      if same_text then return end
+      accepted_completion = nil
+    end
     if vim.fn.pumvisible() == 1 then
       return
     end
 
     local buf = vim.api.nvim_get_current_buf()
     local cursor = vim.api.nvim_win_get_cursor(0)
+    local changedtick = vim.api.nvim_buf_get_changedtick(buf)
     local line = vim.api.nvim_get_current_line()
     local prefix = line:sub(1, cursor[2]):match("([%a_][%w_]*)$")
     if not prefix or #prefix < 2 then
@@ -419,7 +456,9 @@ vim.api.nvim_create_autocmd("TextChangedI", {
     end
 
     vim.schedule(function()
-      if vim.fn.mode() ~= "i" or vim.api.nvim_get_current_buf() ~= buf then
+      if vim.fn.mode() ~= "i" or vim.api.nvim_get_current_buf() ~= buf
+          or vim.api.nvim_buf_get_changedtick(buf) ~= changedtick
+          or accepted_completion then
         return
       end
       local current_cursor = vim.api.nvim_win_get_cursor(0)
@@ -467,6 +506,7 @@ vim.api.nvim_create_autocmd("TextChangedI", {
 vim.api.nvim_create_autocmd("CompleteDone", {
   callback = function()
     local item = vim.v.completed_item
+    if item.word and item.word ~= "" then remember_accepted_completion() end
     if item.user_data ~= "python_snippet" then
       return
     end
@@ -476,6 +516,7 @@ vim.api.nvim_create_autocmd("CompleteDone", {
       if vim.fn.mode() == "i" and vim.api.nvim_get_current_buf() == buf
           and vim.deep_equal(vim.api.nvim_win_get_cursor(0), cursor) then
         expand_or_insert_tab()
+        remember_accepted_completion()
       end
     end)
   end,
@@ -485,6 +526,12 @@ vim.api.nvim_create_autocmd("CompleteDone", {
 vim.keymap.set("i", "<CR>", function()
   return vim.fn.pumvisible() == 1 and "<C-y>" or "<CR>"
 end, { expr = true, desc = "Accept completion or insert newline" })
+vim.keymap.set("i", "<Down>", function()
+  return vim.fn.pumvisible() == 1 and "<C-n>" or "<Down>"
+end, { expr = true, desc = "Next completion or move down" })
+vim.keymap.set("i", "<Up>", function()
+  return vim.fn.pumvisible() == 1 and "<C-p>" or "<Up>"
+end, { expr = true, desc = "Previous completion or move up" })
 
 -- Pick a directory from :cd with fzf.  :cd hoge/<Tab> searches below hoge.
 local function fzf_cd(argument)
