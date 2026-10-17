@@ -35,6 +35,31 @@ fish と bash の設定だけを適用する場合は `python3 scripts/install.p
 
 Claude Code・Codexの変更と fish への切り替えは、新しいセッションから使う。
 
+## ターミナルで Web ページを読む
+
+fish の `wr`（`webread` の略）は AtCoder の問題文と GitHub のリポジトリ・Issue・PR・ファイルに対応する。`w3m` と `gh` が必要。
+
+```fish
+wr 300 a             # ABC 300 A
+wr abc300 c          # 同じく ABC 300 C
+wr edpc a            # Educational DP A
+wr z                 # Educational DP Z
+wr --lang en 300 a   # 英語の問題文
+wr -e 300 a          # ABC 300 A の解説
+wr -e edpc a         # Educational DP A の解説
+wr -E 300 a          # 解説が複数ある場合の一覧
+wr --dump 300 a      # 端末へテキストとして出力
+wr 'https://github.com/cli/cli'
+wr --comments 'https://github.com/cli/cli/issues/1'
+wr 'https://github.com/cli/cli/blob/trunk/docs/README.md'
+```
+
+AtCoder は選んだ言語の問題文だけを `w3m` で開き、`\(...\)`、`$...$`、単独の `\dots`・`\vdots` や `A_i`・`A_{N-1}` などを端末向けの文字に変換する。入力形式中の数式も変換し、サンプル入出力は元の文字を保つ。複雑な数式は一行の表記になり、未対応の TeX コマンドはそのまま残す。`-e` は問題別の解説一覧から公式解説を優先して本文を開き、記事を取得できない場合はリンク一覧を表示する。`-E` は最初からリンク一覧を開く。閲覧画面では `q` で確認なしに終了でき、マウスで端末のテキスト選択・コピーができる。`--dump` を付けると標準出力に表示できる。GitHub のリポジトリ・Issue・PR は `gh` の表示を使い、ファイルは Markdown なら `glow` がインストール済みの場合に限り `glow` で開く。ファイル URL のブランチ名に `/` が入る場合は未対応。
+
+```sh
+sudo apt install w3m gh
+```
+
 ## 管理する設定
 
 | ファイル | 内容 | 適用先 |
@@ -42,7 +67,7 @@ Claude Code・Codexの変更と fish への切り替えは、新しいセッシ�
 | `claude/settings.json` | Opus（1M）、日本語、高いeffort、fullscreen、auto mode、既存のプラグイン設定 | `~/.claude/settings.json` にマージ |
 | `codex/config.toml` | GPT-6.1 Sol、medium、Auto-review、workspace-write、Herdr用hooks | `~/.codex/config.toml` にマージ |
 | `herdr/config.toml` | 作業ディレクトリの引き継ぎ、ペインのエージェント名、アプリ内通知、セッション復元 | `~/.config/herdr/config.toml` へシンボリックリンク |
-| `fish/config.fish` | `c` で直下のディレクトリを fzf 選択、`c ..` などの引数付き移動、`cdr` で ghq リポジトリ選択 | `~/.config/fish/config.fish` へシンボリックリンク |
+| `fish/config.fish` | `c` で直下のディレクトリを fzf 選択、`c ..` などの引数付き移動、`cdr` で ghq リポジトリ選択、`wr` で AtCoder/GitHub を表示 | `~/.config/fish/config.fish` へシンボリックリンク |
 | `nvim/init.lua` | netrw のツリー表示と `:cd` 後の表示更新、ファイルを開いたときの作業ディレクトリ追従、PDF を xpdf で表示、Git の変更表示、Python スニペットと単語の候補表示、Enter での確定・展開、`:cd<Tab>` でディレクトリを fzf 選択、`-` で netrw を開く、`Space y` でファイル全体をコピー | `~/.config/nvim/init.lua` へシンボリックリンク |
 | `nvim/snippets/python.json` | Python 用スニペット | `~/.config/nvim/snippets/python.json` へシンボリックリンク |
 | `bash/exec-fish.bash` | `c` で直下のディレクトリを fzf 選択、引数付き移動、対話 bash から `exec fish` | `~/.bashrc` の末尾に管理ブロックを追加 |

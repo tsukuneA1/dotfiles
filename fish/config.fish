@@ -30,3 +30,13 @@ function cdr --description 'Select a ghq repository with fzf and change director
         cd -- "$target"
     end
 end
+
+function webread --description 'Read AtCoder tasks and GitHub pages in the terminal'
+    set -l config_source (realpath (functions --details webread))
+    set -l script (path dirname $config_source)/../scripts/webread.py
+    python3 $script $argv
+end
+
+function wr --description 'Short form of webread'
+    webread $argv
+end
