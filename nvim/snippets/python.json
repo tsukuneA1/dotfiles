@@ -34,6 +34,19 @@
     "body": "A = list(map(int, input().split()))",
     "description": "A = list(map(int, input().split()))"
   },
+  "graph input": {
+    "prefix": "gi",
+    "description": "無向グラフの入力 (頂点番号を 0-indexed に変換)",
+    "body": [
+      "G = [[] for _ in range(N)]",
+      "for _ in range(M):",
+      "    u, v = map(int, input().split())",
+      "    u, v = u - 1, v - 1",
+      "    G[u].append(v)",
+      "    G[v].append(u)",
+      "$0"
+    ]
+  },
 
   "atcoder: main template": {
     "prefix": "atmain",
