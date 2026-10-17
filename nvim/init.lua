@@ -399,7 +399,12 @@ local function expand_or_insert_tab()
 
   local expanded, offset = render_body(snippet.body)
   local start_col = col - #prefix
-  vim.api.nvim_buf_set_text(0, row, start_col, row, col, vim.split(expanded, "\n", { plain = true }))
+  local indent = line:sub(1, start_col):match("^[ \t]*")
+  local replacement = vim.split(expanded, "\n", { plain = true })
+  for i = 2, #replacement do
+    replacement[i] = indent .. replacement[i]
+  end
+  vim.api.nvim_buf_set_text(0, row, start_col, row, col, replacement)
 
   local before_cursor = expanded:sub(1, offset)
   local newline_count = select(2, before_cursor:gsub("\n", ""))
@@ -407,6 +412,8 @@ local function expand_or_insert_tab()
   local target_col = last_newline and (#before_cursor - last_newline) or #before_cursor
   if newline_count == 0 then
     target_col = start_col + target_col
+  else
+    target_col = #indent + target_col
   end
   vim.api.nvim_win_set_cursor(0, { row + newline_count + 1, target_col })
 end
