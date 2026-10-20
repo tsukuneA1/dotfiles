@@ -1,6 +1,9 @@
 # Shared Herdr configuration. Native integrations are installed by install.py.
 onboarding = false
 
+[keys]
+prefix = "ctrl+a"
+
 [terminal]
 new_cwd = "follow"
 
