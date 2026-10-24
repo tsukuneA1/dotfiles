@@ -16,9 +16,32 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.bo.tabstop = 4
   end,
 })
+local function jump_netrw_directory(direction)
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+  local remaining = vim.v.count1
+  for candidate = row + direction, direction > 0 and #lines or 1, direction do
+    local line = lines[candidate]
+    if line:match("^| .*/$") then
+      local column = 1
+      while line:sub(column, column + 1) == "| " do column = column + 2 end
+      vim.api.nvim_win_set_cursor(0, { candidate, column - 1 })
+      remaining = remaining - 1
+      if remaining == 0 then return end
+    end
+  end
+end
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "netrw",
-  callback = function() vim.opt_local.list = false end,
+  callback = function(args)
+    vim.opt_local.list = false
+    vim.keymap.set("n", "{", function() jump_netrw_directory(-1) end, {
+      buffer = args.buf, silent = true, desc = "Jump to the previous directory",
+    })
+    vim.keymap.set("n", "}", function() jump_netrw_directory(1) end, {
+      buffer = args.buf, silent = true, desc = "Jump to the next directory",
+    })
+  end,
 })
 -- Expand netrw directories in place; follow the directory of an opened file.
 vim.g.netrw_keepdir = 1
