@@ -61,8 +61,29 @@ vim.api.nvim_create_autocmd("BufEnter", {
 vim.keymap.set("n", "<leader>y", "<Cmd>%y+<CR>", {
   desc = "Copy the whole file to the system clipboard",
 })
-vim.keymap.set("n", "-", "<Cmd>Explore<CR>", {
-  desc = "Open netrw in the current window",
+vim.keymap.set("n", "-", function()
+  local filename = vim.api.nvim_buf_get_name(0)
+  vim.cmd.Explore()
+  if filename == "" or vim.bo.filetype ~= "netrw" or not vim.w.netrw_treetop then return end
+  -- :Explore resets the cursor to the banner; select the file we came from.
+  local parents = { [0] = vim.w.netrw_treetop:gsub("/$", "") }
+  for row, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+    local depth, column = 0, 1
+    while line:sub(column, column + 1) == "| " do
+      depth, column = depth + 1, column + 2
+    end
+    if depth > 0 and parents[depth - 1] then
+      local entry = line:sub(column)
+      local path = parents[depth - 1] .. "/" .. entry
+      if entry:sub(-1) == "/" then parents[depth] = path:sub(1, -2) end
+      if path == filename or path:gsub("[@*|=]$", "") == filename then
+        vim.api.nvim_win_set_cursor(0, { row, column - 1 })
+        return
+      end
+    end
+  end
+end, {
+  desc = "Open netrw with the current file selected",
 })
 
 -- Open PDF pages in the local graphical viewer instead of reading binary data.
