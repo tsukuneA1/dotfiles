@@ -104,7 +104,7 @@ python3 scripts/install.py --home /tmp/dotfiles-preview --skip-integrations
 プロジェクトのディレクトリで `herdr` を起動し、ペイン内で `claude` または `codex` を実行する。
 マウスや右クリックメニューでペインを操作できる。
 
-キーボード操作は `Ctrl+b` を押して離してから、次のキーを押す。
+キーボード操作は `Ctrl+a` を押して離してから、次のキーを押す。
 
 | キー | 操作 |
 | --- | --- |
