@@ -105,7 +105,7 @@
       "    if self.size[rx] < self.size[ry]:",
       "      rx, ry = ry, rx",
       "",
-      "    self.parent[ry] = self.parent[rx]",
+      "    self.parent[ry] = rx",
       "    self.size[rx] += self.size[ry]",
       "    return True",
       "",
