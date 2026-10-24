@@ -107,6 +107,7 @@
       "",
       "    self.parent[ry] = rx",
       "    self.size[rx] += self.size[ry]",
+      "",
       "    return True",
       "",
       "  def get_size(self, x):",
